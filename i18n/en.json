@@ -613,6 +613,7 @@
     "subscribers.invalidAction": "Invalid action.",
     "subscribers.invalidEmail": "Invalid email.",
     "subscribers.invalidJSON": "Invalid JSON in attributes.",
+    "subscribers.hideFromLeaderboard": "Show as Anonymous on public leaderboards",
     "subscribers.invalidName": "Invalid name.",
     "subscribers.listChangeApplied": "List change applied.",
     "subscribers.lists": "Lists",

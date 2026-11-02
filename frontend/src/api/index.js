@@ -221,6 +221,11 @@ export const updateSubscriber = (data) => http.put(
   { loading: models.subscribers },
 );
 
+export const setSubscriberLeaderboardHidden = (id, hidden) => http.put(
+  `/api/subscribers/${id}/leaderboard-visibility`,
+  { hidden },
+);
+
 export const sendSubscriberOptin = (id) => http.post(
   `/api/subscribers/${id}/optin`,
   {},

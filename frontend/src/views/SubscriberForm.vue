@@ -17,6 +17,10 @@
           {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
           {{ $t('subscribers.referralCode') }}: <span data-cy="referral-code"><copy-text :text="data.referralCode" /></span>
         </p>
+        <b-switch v-if="isEditing && $can('subscribers:manage')" v-model="form.hideFromLeaderboard" size="is-small"
+          class="mt-2" data-cy="hide-from-leaderboard" @input="onHideFromLeaderboard">
+          <span class="is-size-7">{{ $t('subscribers.hideFromLeaderboard') }}</span>
+        </b-switch>
       </header>
 
       <section expanded class="modal-card-body">
@@ -342,6 +346,15 @@ export default Vue.extend({
       }
 
       return attribs;
+    },
+
+    // Saves the leaderboard opt-out straight away (it isn't part of the form's Save).
+    onHideFromLeaderboard(hidden) {
+      this.$api.setSubscriberLeaderboardHidden(this.form.id, hidden).then(() => {
+        this.$utils.toast(this.$t('globals.messages.updated', { name: this.form.name }));
+      }).catch(() => {
+        this.form.hideFromLeaderboard = !hidden;
+      });
     },
   },
 
