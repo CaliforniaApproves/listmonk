@@ -500,7 +500,7 @@ func (a *App) SubscriptionForm(c echo.Context) error {
 		}
 	}
 
-	hasOptin, err := a.processSubForm(c)
+	hasOptin, _, err := a.processSubForm(c)
 	if err != nil {
 		e, ok := err.(*echo.HTTPError)
 		if !ok {
@@ -536,14 +536,15 @@ func (a *App) PublicSubscription(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("public.invalidFeature"))
 	}
 
-	hasOptin, err := a.processSubForm(c)
+	hasOptin, referralCode, err := a.processSubForm(c)
 	if err != nil {
 		return err
 	}
 
 	return c.JSON(http.StatusOK, okResp{struct {
-		HasOptin bool `json:"has_optin"`
-	}{hasOptin}})
+		HasOptin     bool   `json:"has_optin"`
+		ReferralCode string `json:"referral_code"`
+	}{hasOptin, referralCode}})
 }
 
 // LinkRedirect redirects a link UUID to its original underlying link
@@ -721,7 +722,7 @@ func drawTransparentImage(h, w int) []byte {
 // processSubForm processes an incoming form/public API subscription request.
 // The bool indicates whether there was subscription to an optin list so that
 // an appropriate message can be shown.
-func (a *App) processSubForm(c echo.Context) (bool, error) {
+func (a *App) processSubForm(c echo.Context) (bool, string, error) {
 	// Get and validate fields.
 	var req struct {
 		Name          string   `form:"name" json:"name"`
@@ -729,21 +730,21 @@ func (a *App) processSubForm(c echo.Context) (bool, error) {
 		FormListUUIDs []string `form:"l" json:"list_uuids"`
 	}
 	if err := c.Bind(&req); err != nil {
-		return false, err
+		return false, "", err
 	}
 
 	if len(req.FormListUUIDs) == 0 {
-		return false, echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("public.noListsSelected"))
+		return false, "", echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("public.noListsSelected"))
 	}
 
 	// Validate fields.
 	if len(req.Email) > 1000 {
-		return false, echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidEmail"))
+		return false, "", echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidEmail"))
 	}
 
 	em, err := a.importer.SanitizeEmail(req.Email)
 	if err != nil {
-		return false, echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return false, "", echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	req.Email = em
 
@@ -752,7 +753,7 @@ func (a *App) processSubForm(c echo.Context) (bool, error) {
 		// If there's no name, use the name bit from the e-mail.
 		req.Name = strings.Split(req.Email, "@")[0]
 	} else if len(req.Name) > stdInputMaxLen {
-		return false, echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidName"))
+		return false, "", echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("subscribers.invalidName"))
 	}
 
 	listUUIDs := pq.StringArray(req.FormListUUIDs)
@@ -760,23 +761,23 @@ func (a *App) processSubForm(c echo.Context) (bool, error) {
 	// Fetch the list types and ensure that they are not private.
 	listTypes, err := a.core.GetListTypes(nil, req.FormListUUIDs)
 	if err != nil {
-		return false, echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("%s", err.(*echo.HTTPError).Message))
+		return false, "", echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("%s", err.(*echo.HTTPError).Message))
 	}
 
 	for _, t := range listTypes {
 		if t == models.ListTypePrivate {
-			return false, echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("globals.messages.invalidUUID"))
+			return false, "", echo.NewHTTPError(http.StatusBadRequest, a.i18n.T("globals.messages.invalidUUID"))
 		}
 	}
 
 	// Insert the subscriber into the DB.
-	_, hasOptin, err := a.core.InsertSubscriber(models.Subscriber{
+	newSub, hasOptin, err := a.core.InsertSubscriber(models.Subscriber{
 		Name:   req.Name,
 		Email:  req.Email,
 		Status: models.SubscriberStatusEnabled,
 	}, nil, listUUIDs, false, true)
 	if err == nil {
-		return hasOptin, nil
+		return hasOptin, newSub.ReferralCode, nil
 	}
 
 	// Insert returned an error. Examine it.
@@ -787,20 +788,20 @@ func (a *App) processSubForm(c echo.Context) (bool, error) {
 		// Get the subscriber from the DB by their email.
 		sub, err := a.core.GetSubscriber(0, "", req.Email)
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
 
 		// Update the subscriber's subscriptions in the DB.
 		_, hasOptin, err := a.core.UpdateSubscriberWithLists(sub.ID, sub, nil, listUUIDs, false, false, true, nil, true)
 		if err == nil {
-			return hasOptin, nil
+			return hasOptin, sub.ReferralCode, nil
 		}
 		lastErr = err
 	}
 
 	// Something else went wrong.
 	if e, ok := lastErr.(*echo.HTTPError); ok {
-		return false, echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("%s", e.Message))
+		return false, "", echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("%s", e.Message))
 	}
-	return false, echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("public.errorProcessingRequest"))
+	return false, "", echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("public.errorProcessingRequest"))
 }
