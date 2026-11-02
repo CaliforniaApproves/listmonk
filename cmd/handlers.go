@@ -200,6 +200,8 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.GET("/api/lists/analytics/:type", a.GetListAnalytics)
 		g.GET("/api/lists/:id", hasID(a.GetList))
 		g.GET("/api/lists/:id/leaderboard", pm(hasID(a.GetListLeaderboard), auth.PermSubscribersGetAll, auth.PermSubscribersGet))
+		g.GET("/api/lists/:id/leaderboard/public", hasID(a.GetPublicLeaderboard))
+		g.PUT("/api/subscribers/:id/leaderboard-visibility", pm(hasID(a.SetSubscriberLeaderboardHidden), auth.PermSubscribersManage))
 		g.POST("/api/lists", pm(a.CreateList, auth.PermListManageAll))
 		g.PUT("/api/lists/:id", hasID(a.UpdateList))
 		g.DELETE("/api/lists", a.DeleteLists)

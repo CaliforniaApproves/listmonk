@@ -60,21 +60,85 @@ type LeaderboardEntry struct {
 }
 
 // GetListLeaderboard returns the top referrers of a list by confirmed referrals.
-// Ties share a rank.
+// Ties share a rank. The top N rows come straight off the
+// idx_list_referral_counts_top index; ranking only the N rows is exact, because
+// every row ranked above one of them is also in the top N.
 func (c *Core) GetListLeaderboard(listID, limit int) ([]LeaderboardEntry, error) {
 	out := []LeaderboardEntry{}
 	err := c.db.Select(&out, `
-		SELECT RANK() OVER (ORDER BY lrc.count DESC)::INT AS rank,
-			s.id AS subscriber_id, s.name, s.email, s.referral_code, lrc.count
-		FROM list_referral_counts lrc
-		JOIN subscribers s ON s.id = lrc.subscriber_id
-		WHERE lrc.list_id = $1 AND lrc.count > 0
-		ORDER BY lrc.count DESC, s.id ASC
-		LIMIT $2`, listID, limit)
+		WITH top AS (
+			SELECT subscriber_id, count FROM list_referral_counts
+			WHERE list_id = $1 AND count > 0
+			ORDER BY count DESC, subscriber_id
+			LIMIT $2
+		)
+		SELECT RANK() OVER (ORDER BY t.count DESC)::INT AS rank,
+			s.id AS subscriber_id, s.name, s.email, s.referral_code, t.count
+		FROM top t JOIN subscribers s ON s.id = t.subscriber_id
+		ORDER BY t.count DESC, t.subscriber_id`, listID, limit)
 	if err != nil {
 		c.log.Printf("error fetching leaderboard: %v", err)
 		return nil, echo.NewHTTPError(http.StatusInternalServerError,
 			c.i18n.Ts("globals.messages.errorFetching", "name", "leaderboard", "error", pqErrMsg(err)))
 	}
 	return out, nil
+}
+
+// PublicLeaderboardEntry is a leaderboard row that is safe to show publicly:
+// no e-mail, ID or referral code.
+type PublicLeaderboardEntry struct {
+	Rank  int    `db:"rank" json:"rank"`
+	Name  string `db:"name" json:"name"`
+	Count int    `db:"count" json:"count"`
+}
+
+// GetPublicLeaderboard returns the top referrers of a list for public display.
+// Names are "First L." (first word of the name, plus the initial of its last
+// word). A subscriber who opted out, has no name, or whose name is just the
+// local part of their e-mail address (the fallback used when none is given) is
+// shown as "Anonymous" and keeps their rank.
+func (c *Core) GetPublicLeaderboard(listID, limit int) ([]PublicLeaderboardEntry, error) {
+	out := []PublicLeaderboardEntry{}
+	err := c.db.Select(&out, `
+		WITH top AS (
+			SELECT subscriber_id, count FROM list_referral_counts
+			WHERE list_id = $1 AND count > 0
+			ORDER BY count DESC, subscriber_id
+			LIMIT $2
+		)
+		SELECT RANK() OVER (ORDER BY t.count DESC)::INT AS rank, t.count,
+			CASE
+				WHEN s.hide_from_leaderboard
+					OR BTRIM(s.name) = ''
+					OR LOWER(BTRIM(s.name)) = LOWER(SPLIT_PART(s.email, '@', 1))
+				THEN 'Anonymous'
+				ELSE LEFT(SPLIT_PART(BTRIM(s.name), ' ', 1), 20)
+					|| CASE WHEN BTRIM(s.name) ~ '\s'
+						THEN ' ' || UPPER(LEFT(SUBSTRING(BTRIM(s.name) FROM '(\S+)$'), 1)) || '.'
+						ELSE '' END
+			END AS name
+		FROM top t JOIN subscribers s ON s.id = t.subscriber_id
+		ORDER BY t.count DESC, t.subscriber_id`, listID, limit)
+	if err != nil {
+		c.log.Printf("error fetching public leaderboard: %v", err)
+		return nil, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "leaderboard", "error", pqErrMsg(err)))
+	}
+	return out, nil
+}
+
+// SetLeaderboardHidden sets whether the subscribers are shown by name on public
+// leaderboards.
+func (c *Core) SetLeaderboardHidden(subIDs []int, hidden bool) error {
+	if len(subIDs) == 0 {
+		return nil
+	}
+	_, err := c.db.Exec(`UPDATE subscribers SET hide_from_leaderboard = $2 WHERE id = ANY($1::INT[])`,
+		pq.Array(subIDs), hidden)
+	if err != nil {
+		c.log.Printf("error updating leaderboard visibility: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorUpdating", "name", "{globals.terms.subscriber}", "error", pqErrMsg(err)))
+	}
+	return nil
 }

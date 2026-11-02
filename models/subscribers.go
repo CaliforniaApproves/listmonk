@@ -41,6 +41,9 @@ type Subscriber struct {
 
 	// ReferralCode is the subscriber's short, unique share code (set by the DB).
 	ReferralCode string `db:"referral_code" json:"referral_code"`
+
+	// HideFromLeaderboard: show as "Anonymous" on public leaderboards.
+	HideFromLeaderboard bool `db:"hide_from_leaderboard" json:"hide_from_leaderboard"`
 }
 
 type subLists struct {
