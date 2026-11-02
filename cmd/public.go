@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/knadh/listmonk/internal/captcha"
 	"github.com/knadh/listmonk/internal/i18n"
@@ -728,6 +729,8 @@ func (a *App) processSubForm(c echo.Context) (bool, string, error) {
 		Name          string   `form:"name" json:"name"`
 		Email         string   `form:"email" json:"email"`
 		FormListUUIDs []string `form:"l" json:"list_uuids"`
+		// Referral code of the subscriber who referred this one (optional).
+		ReferredBy string `form:"referred_by" json:"referred_by"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return false, "", err
@@ -770,6 +773,10 @@ func (a *App) processSubForm(c echo.Context) (bool, string, error) {
 		}
 	}
 
+	// Mark the time before the insert so that referral attribution only applies
+	// to subscriptions created by this request.
+	since, clockErr := a.core.DBClock()
+
 	// Insert the subscriber into the DB.
 	newSub, hasOptin, err := a.core.InsertSubscriber(models.Subscriber{
 		Name:   req.Name,
@@ -777,6 +784,7 @@ func (a *App) processSubForm(c echo.Context) (bool, string, error) {
 		Status: models.SubscriberStatusEnabled,
 	}, nil, listUUIDs, false, true)
 	if err == nil {
+		a.applyReferral(newSub.ID, req.FormListUUIDs, req.ReferredBy, since, clockErr)
 		return hasOptin, newSub.ReferralCode, nil
 	}
 
@@ -794,6 +802,7 @@ func (a *App) processSubForm(c echo.Context) (bool, string, error) {
 		// Update the subscriber's subscriptions in the DB.
 		_, hasOptin, err := a.core.UpdateSubscriberWithLists(sub.ID, sub, nil, listUUIDs, false, false, true, nil, true)
 		if err == nil {
+			a.applyReferral(sub.ID, req.FormListUUIDs, req.ReferredBy, since, clockErr)
 			return hasOptin, sub.ReferralCode, nil
 		}
 		lastErr = err
@@ -804,4 +813,19 @@ func (a *App) processSubForm(c echo.Context) (bool, string, error) {
 		return false, "", echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("%s", e.Message))
 	}
 	return false, "", echo.NewHTTPError(http.StatusInternalServerError, a.i18n.T("public.errorProcessingRequest"))
+}
+
+// applyReferral is a best-effort wrapper: a failure to record the referrer
+// is logged but never fails the subscription itself.
+func (a *App) applyReferral(subID int, listUUIDs []string, code string, since time.Time, clockErr error) {
+	if code == "" {
+		return
+	}
+	if clockErr != nil {
+		a.log.Printf("error recording referral: %v", clockErr)
+		return
+	}
+	if err := a.core.ApplyReferral(subID, listUUIDs, code, since); err != nil {
+		a.log.Printf("error recording referral: %v", err)
+	}
 }
