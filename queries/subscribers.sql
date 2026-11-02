@@ -53,12 +53,17 @@ WITH subs AS (
                     subscriber_lists.created_at AS subscription_created_at,
                     subscriber_lists.updated_at AS subscription_updated_at,
                     subscriber_lists.meta AS subscription_meta,
+                    subscriber_lists.referred_by AS subscription_referred_by,
+                    ref.name AS subscription_referred_by_name,
+                    ref.email AS subscription_referred_by_email,
+                    ref.referral_code AS subscription_referred_by_code,
                     lists.*
             ) l)
         )
         ORDER BY subscriber_lists.created_at, subscriber_lists.list_id
     ) AS lists FROM lists
     LEFT JOIN subscriber_lists ON (subscriber_lists.list_id = lists.id)
+    LEFT JOIN subscribers ref ON (ref.id = subscriber_lists.referred_by)
     WHERE subscriber_lists.subscriber_id = ANY($1)
     GROUP BY subscriber_id
 )
