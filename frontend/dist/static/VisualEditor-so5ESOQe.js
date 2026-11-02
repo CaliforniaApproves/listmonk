@@ -1,0 +1,14 @@
+import l from"./Media-D3nsNFKk.js";import{n as c}from"./index-DGtM-77e.js";const u={components:{Media:l},props:{source:{type:String,default:""},height:{type:String,default:"auto"}},data(){return{isMediaVisible:!1}},methods:{loadScript(){return new Promise((i,t)=>{const e=this.$refs.visualEditor;if(e.contentWindow.EmailBuilder){i();return}const r=document.createElement("script");r.id="email-builder-script",r.src="/admin/static/email-builder/email-builder.umd.js",r.onload=()=>{i()},r.onerror=t,e.contentDocument.head.appendChild(r)})},render(i){const t=this.$refs.visualEditor,e=t.contentWindow.EmailBuilder;if((!e||!e.isRendered("visual-editor-container"))&&t.contentWindow.EmailBuilder.render("visual-editor-container",{data:{},onChange:(a,o)=>{const s=o.replace(/\{\{[^}]*\}\}/g,d=>d.replace(/&quot;/g,'"'));this.$emit("change",{source:JSON.stringify(a),body:s})}}),!i)return;let r=10;const n=window.setInterval(()=>{const a=t.contentWindow.document.getElementById("visual-editor-container");if(a&&a.hasChildNodes()){e.resetDocument(i),window.clearInterval(n);return}r+=1,r>10&&window.clearInterval(n)},100)},onMediaSelect(i){const e=this.$refs.visualEditor.contentDocument.querySelector(".image-url input");if(e){Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,"value").set.call(e,i.url);const n=new Event("input",{bubbles:!0});e.dispatchEvent(n)}},onSidebarMount(i){i.data&&i.data==="visualeditor.select-media"&&(this.isMediaVisible=!0)}},mounted(){const i=this.$refs.visualEditor;i.style.height=this.height,i.srcdoc=`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { margin: 0; padding: 0; }
+            #visual-editor-container { width: 100%; height: 100%; }
+          </style>
+        </head>
+        <body>
+          <div id="visual-editor-container"></div>
+        </body>
+      </html>
+    `,i.onload=()=>{this.loadScript().then(()=>{let t=null;this.$props.source&&(t=JSON.parse(this.$props.source)),this.render(t)}).catch(t=>{console.error("Failed to load email-builer script:",t)})},window.addEventListener("message",this.onSidebarMount,!1)},unmounted(){window.removeEventListener("message",this.onSidebarMount,!1)}};var m=function(){var t=this,e=t._self._c;return e("div",{staticClass:"visual-editor-wrapper"},[e("iframe",{ref:"visualEditor",staticClass:"visual-editor email-builder-container",attrs:{id:"visual-editor",title:"Visual email editor"}}),e("b-modal",{attrs:{scroll:"keep","aria-modal":!0,active:t.isMediaVisible,width:900},on:{"update:active":function(r){t.isMediaVisible=r}}},[e("div",{staticClass:"modal-card content",staticStyle:{width:"auto"}},[e("section",{staticClass:"modal-card-body",attrs:{expanded:""}},[e("media",{attrs:{"is-modal":""},on:{selected:t.onMediaSelect}})],1)])])],1)},p=[],h=c(u,m,p);const w=h.exports;export{w as V};

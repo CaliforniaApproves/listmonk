@@ -1,0 +1,1 @@
+import{n as t,V as _}from"./index-DGtM-77e.js";const n=_.extend({});var r=function(){var e=this;return e._self._c,e._self._setupProxy,e._m(0)},a=[function(){var s=this,e=s._self._c;return s._self._setupProxy,e("section",{staticClass:"page-404"},[e("h1",{staticClass:"title"},[s._v(" 404 ")])])}],o=t(n,r,a);const i=o.exports;export{i as default};

@@ -1,9 +1,11 @@
 package core
 
 import (
+	"net/http"
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v5"
 	"github.com/lib/pq"
 )
 
@@ -39,4 +41,34 @@ func (c *Core) ApplyReferral(subID int, listUUIDs []string, code string, since t
 			AND sl.created_at >= $4`,
 		subID, code, pq.Array(listUUIDs), since)
 	return err
+}
+
+// LeaderboardEntry is one referrer's standing on a list's leaderboard.
+type LeaderboardEntry struct {
+	Rank         int    `db:"rank" json:"rank"`
+	SubscriberID int    `db:"subscriber_id" json:"subscriber_id"`
+	Name         string `db:"name" json:"name"`
+	Email        string `db:"email" json:"email"`
+	ReferralCode string `db:"referral_code" json:"referral_code"`
+	Count        int    `db:"count" json:"count"`
+}
+
+// GetListLeaderboard returns the top referrers of a list by confirmed referrals.
+// Ties share a rank.
+func (c *Core) GetListLeaderboard(listID, limit int) ([]LeaderboardEntry, error) {
+	out := []LeaderboardEntry{}
+	err := c.db.Select(&out, `
+		SELECT RANK() OVER (ORDER BY lrc.count DESC)::INT AS rank,
+			s.id AS subscriber_id, s.name, s.email, s.referral_code, lrc.count
+		FROM list_referral_counts lrc
+		JOIN subscribers s ON s.id = lrc.subscriber_id
+		WHERE lrc.list_id = $1 AND lrc.count > 0
+		ORDER BY lrc.count DESC, s.id ASC
+		LIMIT $2`, listID, limit)
+	if err != nil {
+		c.log.Printf("error fetching leaderboard: %v", err)
+		return nil, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorFetching", "name", "leaderboard", "error", pqErrMsg(err)))
+	}
+	return out, nil
 }
