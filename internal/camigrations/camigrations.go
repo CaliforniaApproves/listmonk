@@ -25,6 +25,7 @@ type step struct {
 var steps = []step{
 	{"001_referral_code", sql001ReferralCode},
 	{"002_referred_by", sql002ReferredBy},
+	{"003_leaderboard", sql003Leaderboard},
 }
 
 const settingsKey = "ca_migrations"
