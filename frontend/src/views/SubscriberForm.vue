@@ -15,6 +15,7 @@
         <p v-if="isEditing" class="has-text-grey is-size-7">
           {{ $t('globals.fields.id') }}: <span data-cy="id"><copy-text :text="`${data.id}`" /></span>
           {{ $t('globals.fields.uuid') }}: <copy-text :text="data.uuid" />
+          {{ $t('subscribers.referralCode') }}: <span data-cy="referral-code"><copy-text :text="data.referralCode" /></span>
         </p>
       </header>
 
