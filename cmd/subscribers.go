@@ -51,6 +51,9 @@ type subQueryReq struct {
 	SubscriptionStatus string `json:"subscription_status"`
 	SubscriberStatus   string `json:"subscriber_status"`
 	All                bool   `json:"all"`
+
+	// Referral code of the referrer, for the "add" action (see ManageSubscriberLists).
+	ReferredBy string `json:"referred_by"`
 }
 
 // subOptin contains the data that's passed to the double opt-in e-mail template.
@@ -528,17 +531,21 @@ func (a *App) CreateSubscriber(c *echo.Context) error {
 	// Get the authenticated user.
 	user := auth.GetUser(c)
 
-	// Get and validate fields.
-	var req subimporter.SubReq
-	if err := c.Bind(&req); err != nil {
+	// Get and validate fields. `referred_by` is the optional referral code of the
+	// subscriber who referred this one.
+	var body struct {
+		subimporter.SubReq
+		ReferredBy string `json:"referred_by"`
+	}
+	if err := c.Bind(&body); err != nil {
 		return err
 	}
-	if err := a.validateSubscriberStatus(req.Status); err != nil {
+	if err := a.validateSubscriberStatus(body.Status); err != nil {
 		return err
 	}
 
 	// Validate fields.
-	req, err := a.importer.ValidateFields(req)
+	req, err := a.importer.ValidateFields(body.SubReq)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -551,11 +558,15 @@ func (a *App) CreateSubscriber(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusForbidden, a.i18n.Ts("globals.messages.permissionDenied", "name", "lists"))
 	}
 
+	// Mark the time so referral attribution only covers subscriptions created here.
+	since, clockErr := a.core.DBClock()
+
 	// Insert the subscriber into the DB.
 	sub, _, err := a.core.InsertSubscriber(req.Subscriber, listIDs, nil, req.PreconfirmSubs, false)
 	if err != nil {
 		return err
 	}
+	a.applyReferral([]int{sub.ID}, listIDs, nil, body.ReferredBy, since, clockErr)
 
 	return c.JSON(http.StatusOK, okResp{sub})
 }
@@ -814,7 +825,11 @@ func (a *App) ManageSubscriberLists(c *echo.Context) error {
 		if err := a.validateSubscriptionStatus(req.Status); err != nil {
 			return err
 		}
+		since, clockErr := a.core.DBClock()
 		err = a.core.AddSubscriptions(subIDs, listIDs, req.Status)
+		if err == nil {
+			a.applyReferral(subIDs, listIDs, nil, req.ReferredBy, since, clockErr)
+		}
 	case models.SubscriptionActionRemove:
 		err = a.core.DeleteSubscriptions(subIDs, listIDs)
 	case models.SubscriptionActionUnsubscribe:
