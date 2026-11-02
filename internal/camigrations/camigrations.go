@@ -24,6 +24,7 @@ type step struct {
 // reorder a step that has shipped.
 var steps = []step{
 	{"001_referral_code", sql001ReferralCode},
+	{"002_referred_by", sql002ReferredBy},
 }
 
 const settingsKey = "ca_migrations"
