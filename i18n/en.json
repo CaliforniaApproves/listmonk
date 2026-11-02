@@ -625,6 +625,7 @@
     "subscribers.query": "Query",
     "subscribers.queryPlaceholder": "E-mail or name",
     "subscribers.referralCode": "Referral code",
+    "subscribers.referredBy": "Referred by",
     "subscribers.reset": "Reset",
     "subscribers.selectAll": "Select all {num}",
     "subscribers.sendOptinConfirm": "Send opt-in confirmation",

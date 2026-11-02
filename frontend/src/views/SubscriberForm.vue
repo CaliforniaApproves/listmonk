@@ -96,6 +96,18 @@
                   </template>
                 </b-table-column>
 
+                <b-table-column v-slot="props" field="referredBy" :label="$t('subscribers.referredBy')">
+                  <router-link v-if="props.row.subscriptionReferredBy" :to="`/subscribers/${props.row.subscriptionReferredBy}`"
+                    data-cy="referred-by">
+                    {{ props.row.subscriptionReferredByName || props.row.subscriptionReferredByEmail }}
+                  </router-link>
+                  <br v-if="props.row.subscriptionReferredBy" />
+                  <span v-if="props.row.subscriptionReferredBy" class="is-size-7 has-text-grey">
+                    {{ props.row.subscriptionReferredByCode }}
+                  </span>
+                  <span v-else class="has-text-grey-light">—</span>
+                </b-table-column>
+
                 <b-table-column v-slot="props" field="createdAt" :label="$t('globals.fields.createdAt')">
                   {{ $utils.niceDate(props.row.subscriptionCreatedAt, true) }}
                 </b-table-column>
