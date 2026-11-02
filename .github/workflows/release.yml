@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*" # Will trigger only if tag is pushed matching pattern `v*` (Eg: `v0.1.0`)
+      - "!v*-ca.*" # CaliforniaApproves fork tags are built by ca-release.yml
 
 permissions: write-all
 

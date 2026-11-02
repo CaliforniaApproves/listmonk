@@ -1,0 +1,52 @@
+# CaliforniaApproves fork release: builds the linux/amd64 binary (with the admin
+# UI and static assets packed in) and publishes it as a GitHub release of this
+# fork. Triggered by tags like v6.2.0-ca.1 (upstream version, then the fork's
+# own revision). The infrastructure repo's listmonk role downloads these assets.
+#
+# Upstream's release.yml (goreleaser, Docker Hub) ignores these tags; see its
+# `tags` filter.
+name: ca-release
+
+on:
+  push:
+    tags:
+      - "v*-ca.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+
+      - name: Build
+        run: make dist
+
+      - name: Package
+        id: pkg
+        run: |
+          set -euo pipefail
+          ver="${GITHUB_REF_NAME#v}"
+          mkdir -p out
+          tar -czf "out/listmonk_${ver}_linux_amd64.tar.gz" listmonk README.md LICENSE
+          (cd out && sha256sum "listmonk_${ver}_linux_amd64.tar.gz" > "listmonk_${ver}_checksums.txt")
+          echo "ver=${ver}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "CaliforniaApproves fork build of listmonk (referral codes, referrals and leaderboards)." \
+            out/*
