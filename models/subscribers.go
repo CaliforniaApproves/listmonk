@@ -38,6 +38,9 @@ type Subscriber struct {
 	Attribs JSON           `db:"attribs" json:"attribs"`
 	Status  string         `db:"status" json:"status"`
 	Lists   types.JSONText `db:"lists" json:"lists"`
+
+	// ReferralCode is the subscriber's short, unique share code (set by the DB).
+	ReferralCode string `db:"referral_code" json:"referral_code"`
 }
 
 type subLists struct {
