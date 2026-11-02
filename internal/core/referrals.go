@@ -72,3 +72,40 @@ func (c *Core) GetListLeaderboard(listID, limit int) ([]LeaderboardEntry, error)
 	}
 	return out, nil
 }
+
+// ReferralWindow is how recent a subscription must be for ApplyReferralByEmail
+// to attribute it, so that pre-existing subscriptions keep their original
+// attribution.
+const ReferralWindow = 60 * time.Second
+
+// ApplyReferralByEmail records the referrer (by referral code) on the e-mail's
+// subscriptions to the given lists, for subscriptions created within the last
+// ReferralWindow that have no referrer yet. Self-referrals, unknown codes and
+// blocklisted referrers match nothing. Returns the number of subscriptions updated.
+func (c *Core) ApplyReferralByEmail(email string, listIDs []int, code string) (int, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" || len(listIDs) == 0 {
+		return 0, nil
+	}
+
+	res, err := c.db.Exec(`
+		UPDATE subscriber_lists sl SET referred_by = r.id
+		FROM subscribers s, subscribers r
+		WHERE LOWER(s.email) = LOWER($1)
+			AND sl.subscriber_id = s.id
+			AND r.referral_code = $2
+			AND r.id != s.id
+			AND r.status != 'blocklisted'
+			AND sl.list_id = ANY($3::INT[])
+			AND sl.referred_by IS NULL
+			AND sl.created_at >= NOW() - MAKE_INTERVAL(secs => $4)`,
+		email, code, pq.Array(listIDs), ReferralWindow.Seconds())
+	if err != nil {
+		c.log.Printf("error applying referral: %v", err)
+		return 0, echo.NewHTTPError(http.StatusInternalServerError,
+			c.i18n.Ts("globals.messages.errorUpdating", "name", "referral", "error", pqErrMsg(err)))
+	}
+
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
