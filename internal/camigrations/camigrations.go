@@ -26,6 +26,7 @@ var steps = []step{
 	{"001_referral_code", sql001ReferralCode},
 	{"002_referred_by", sql002ReferredBy},
 	{"003_leaderboard", sql003Leaderboard},
+	{"004_leaderboard_privacy", sql004LeaderboardPrivacy},
 }
 
 const settingsKey = "ca_migrations"
