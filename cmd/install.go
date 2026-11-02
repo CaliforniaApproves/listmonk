@@ -62,6 +62,9 @@ func install(lastVer string, db *sqlx.DB, fs stuffbin.FileSystem, prompt, idempo
 		lo.Fatalf("error migrating DB schema: %v", err)
 	}
 
+	// Fork-specific (CaliforniaApproves) schema changes.
+	runForkMigrations(db)
+
 	// Load the queries.
 	q := prepareQueries(qMap, db, ko)
 

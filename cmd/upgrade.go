@@ -72,6 +72,7 @@ func upgrade(db *sqlx.DB, fs stuffbin.FileSystem, prompt bool, record bool) {
 
 	// No migrations to run.
 	if len(toRun) == 0 {
+		runForkMigrations(db)
 		lo.Printf("no upgrades to run. Database is up to date.")
 		return
 	}
@@ -96,6 +97,7 @@ func upgrade(db *sqlx.DB, fs stuffbin.FileSystem, prompt bool, record bool) {
 		}
 	}
 
+	runForkMigrations(db)
 	lo.Printf("upgrade complete")
 }
 
@@ -107,8 +109,9 @@ func checkUpgrade(db *sqlx.DB) {
 		lo.Fatalf("error checking migrations: %v", err)
 	}
 
-	// No migrations to run.
+	// No upstream migrations to run. Check for pending fork migrations.
 	if len(toRun) == 0 {
+		checkForkUpgrade(db)
 		return
 	}
 
