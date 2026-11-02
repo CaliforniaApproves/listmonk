@@ -136,6 +136,11 @@ export const getList = async (id) => http.get(
   { loading: models.list },
 );
 
+export const getListLeaderboard = (id, params) => http.get(
+  `/api/lists/${id}/leaderboard`,
+  { params },
+);
+
 export const createList = (data) => http.post(
   '/api/lists',
   data,

@@ -141,6 +141,14 @@
             </b-tooltip>
           </router-link>
 
+          <a v-if="$can('subscribers:get_all') || $can('subscribers:get')" href="#"
+            @click.prevent="showLeaderboard(props.row)" data-cy="btn-leaderboard"
+            :aria-label="$t('lists.leaderboard')">
+            <b-tooltip :label="$t('lists.leaderboard')" type="is-dark">
+              <b-icon icon="trophy-outline" size="is-small" />
+            </b-tooltip>
+          </a>
+
           <a v-if="$can('lists:manage') || $canList(props.row.id, 'list:manage')" href="#"
             @click.prevent="showEditForm(props.row)" data-cy="btn-edit" :aria-label="$t('globals.buttons.edit')">
             <b-tooltip :label="$t('globals.buttons.edit')" type="is-dark">
@@ -174,6 +182,11 @@
       <list-form :data="curItem" :is-editing="isEditing" @finished="formFinished" />
     </b-modal>
 
+    <!-- Referral leaderboard modal -->
+    <b-modal scroll="keep" :aria-modal="true" :active.sync="isLeaderboardVisible" :width="600" destroy-on-hide>
+      <list-leaderboard v-if="leaderboardList" :list="leaderboardList" />
+    </b-modal>
+
     <p v-if="settings['app.cache_slow_queries']" class="has-text-grey">
       *{{ $t('globals.messages.slowQueriesCached') }}
       <a href="https://listmonk.app/docs/maintenance/performance/" target="_blank" rel="noopener noreferer"
@@ -189,10 +202,12 @@ import Vue from 'vue';
 import { mapState } from 'vuex';
 import EmptyPlaceholder from '../components/EmptyPlaceholder.vue';
 import ListForm from './ListForm.vue';
+import ListLeaderboard from './ListLeaderboard.vue';
 
 export default Vue.extend({
   components: {
     ListForm,
+    ListLeaderboard,
     EmptyPlaceholder,
   },
 
@@ -202,6 +217,8 @@ export default Vue.extend({
       curItem: null,
       isEditing: false,
       isFormVisible: false,
+      isLeaderboardVisible: false,
+      leaderboardList: null,
       lists: [],
       queryParams: {
         page: 1,
@@ -236,6 +253,12 @@ export default Vue.extend({
       this.curItem = list;
       this.isFormVisible = true;
       this.isEditing = true;
+    },
+
+    // Show the referral leaderboard of a list.
+    showLeaderboard(list) {
+      this.leaderboardList = list;
+      this.isLeaderboardVisible = true;
     },
 
     // Show the new list form.
