@@ -38,6 +38,9 @@ type subQueryReq struct {
 
 	// Referral code of the referrer, for the "add" action (see ManageSubscriberLists).
 	ReferredBy string `json:"referred_by"`
+
+	// For the "add" action: opt the subscribers out of being named on public leaderboards.
+	HideFromLeaderboard bool `json:"hide_from_leaderboard"`
 }
 
 // subOptin contains the data that's passed to the double opt-in e-mail template.
@@ -234,6 +237,9 @@ func (a *App) CreateSubscriber(c echo.Context) error {
 	var body struct {
 		subimporter.SubReq
 		ReferredBy string `json:"referred_by"`
+
+		// Opt the new subscriber out of being named on public leaderboards.
+		HideFromLeaderboard bool `json:"hide_from_leaderboard"`
 	}
 	if err := c.Bind(&body); err != nil {
 		return err
@@ -262,6 +268,12 @@ func (a *App) CreateSubscriber(c echo.Context) error {
 		return err
 	}
 	a.applyReferral([]int{sub.ID}, listIDs, nil, body.ReferredBy, since, clockErr)
+	if body.HideFromLeaderboard {
+		if err := a.core.SetLeaderboardHidden([]int{sub.ID}, true); err != nil {
+			return err
+		}
+		sub.HideFromLeaderboard = true
+	}
 
 	return c.JSON(http.StatusOK, okResp{sub})
 }
@@ -515,6 +527,9 @@ func (a *App) ManageSubscriberLists(c echo.Context) error {
 		err = a.core.AddSubscriptions(subIDs, listIDs, req.Status)
 		if err == nil {
 			a.applyReferral(subIDs, listIDs, nil, req.ReferredBy, since, clockErr)
+			if req.HideFromLeaderboard {
+				err = a.core.SetLeaderboardHidden(subIDs, true)
+			}
 		}
 	case "remove":
 		err = a.core.DeleteSubscriptions(subIDs, listIDs)
