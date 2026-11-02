@@ -18,28 +18,34 @@ func (c *Core) DBClock() (time.Time, error) {
 }
 
 // ApplyReferral records the referrer (identified by their referral code) on the
-// given subscriber's subscriptions to the given lists, but only on subscriptions
-// created at or after `since` (so existing subscriptions keep their original
-// attribution) and never on a self-referral. Unknown codes and blocklisted
-// referrers are silently ignored.
-func (c *Core) ApplyReferral(subID int, listUUIDs []string, code string, since time.Time) error {
+// given subscribers' subscriptions to the given lists (by ID and/or UUID), but
+// only on subscriptions created at or after `since` (so existing subscriptions
+// keep their original attribution) and never on a self-referral. Unknown codes
+// and blocklisted referrers are silently ignored.
+func (c *Core) ApplyReferral(subIDs, listIDs []int, listUUIDs []string, code string, since time.Time) error {
 	code = strings.ToUpper(strings.TrimSpace(code))
-	if code == "" || len(listUUIDs) == 0 {
+	if code == "" || len(subIDs) == 0 || len(listIDs)+len(listUUIDs) == 0 {
 		return nil
+	}
+	if listIDs == nil {
+		listIDs = []int{}
+	}
+	if listUUIDs == nil {
+		listUUIDs = []string{}
 	}
 
 	_, err := c.db.Exec(`
 		UPDATE subscriber_lists sl SET referred_by = r.id
 		FROM subscribers r, lists l
 		WHERE r.referral_code = $2
-			AND r.id != $1
+			AND r.id != sl.subscriber_id
 			AND r.status != 'blocklisted'
-			AND sl.subscriber_id = $1
+			AND sl.subscriber_id = ANY($1::INT[])
 			AND sl.list_id = l.id
-			AND l.uuid = ANY($3::UUID[])
+			AND (l.id = ANY($3::INT[]) OR l.uuid = ANY($4::UUID[]))
 			AND sl.referred_by IS NULL
-			AND sl.created_at >= $4`,
-		subID, code, pq.Array(listUUIDs), since)
+			AND sl.created_at >= $5`,
+		pq.Array(subIDs), code, pq.Array(listIDs), pq.Array(listUUIDs), since)
 	return err
 }
 
@@ -71,41 +77,4 @@ func (c *Core) GetListLeaderboard(listID, limit int) ([]LeaderboardEntry, error)
 			c.i18n.Ts("globals.messages.errorFetching", "name", "leaderboard", "error", pqErrMsg(err)))
 	}
 	return out, nil
-}
-
-// ReferralWindow is how recent a subscription must be for ApplyReferralByEmail
-// to attribute it, so that pre-existing subscriptions keep their original
-// attribution.
-const ReferralWindow = 60 * time.Second
-
-// ApplyReferralByEmail records the referrer (by referral code) on the e-mail's
-// subscriptions to the given lists, for subscriptions created within the last
-// ReferralWindow that have no referrer yet. Self-referrals, unknown codes and
-// blocklisted referrers match nothing. Returns the number of subscriptions updated.
-func (c *Core) ApplyReferralByEmail(email string, listIDs []int, code string) (int, error) {
-	code = strings.ToUpper(strings.TrimSpace(code))
-	if code == "" || len(listIDs) == 0 {
-		return 0, nil
-	}
-
-	res, err := c.db.Exec(`
-		UPDATE subscriber_lists sl SET referred_by = r.id
-		FROM subscribers s, subscribers r
-		WHERE LOWER(s.email) = LOWER($1)
-			AND sl.subscriber_id = s.id
-			AND r.referral_code = $2
-			AND r.id != s.id
-			AND r.status != 'blocklisted'
-			AND sl.list_id = ANY($3::INT[])
-			AND sl.referred_by IS NULL
-			AND sl.created_at >= NOW() - MAKE_INTERVAL(secs => $4)`,
-		email, code, pq.Array(listIDs), ReferralWindow.Seconds())
-	if err != nil {
-		c.log.Printf("error applying referral: %v", err)
-		return 0, echo.NewHTTPError(http.StatusInternalServerError,
-			c.i18n.Ts("globals.messages.errorUpdating", "name", "referral", "error", pqErrMsg(err)))
-	}
-
-	n, _ := res.RowsAffected()
-	return int(n), nil
 }

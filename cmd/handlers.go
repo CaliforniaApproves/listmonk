@@ -154,7 +154,6 @@ func initHTTPHandlers(e *echo.Echo, a *App) {
 		g.GET("/api/lists", a.GetLists)
 		g.GET("/api/lists/:id", hasID(a.GetList))
 		g.GET("/api/lists/:id/leaderboard", pm(hasID(a.GetListLeaderboard), "subscribers:get_all", "subscribers:get"))
-		g.POST("/api/referrals", pm(a.ApplyReferral, "subscribers:manage"))
 		g.POST("/api/lists", pm(a.CreateList, "lists:manage_all"))
 		g.PUT("/api/lists/:id", hasID(a.UpdateList))
 		g.DELETE("/api/lists", a.DeleteLists)

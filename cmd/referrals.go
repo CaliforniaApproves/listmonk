@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/knadh/listmonk/internal/auth"
 	"github.com/labstack/echo/v4"
@@ -37,33 +38,18 @@ func (a *App) GetListLeaderboard(c echo.Context) error {
 	return c.JSON(http.StatusOK, okResp{out})
 }
 
-// ApplyReferral attributes recently created subscriptions of a subscriber to a
-// referrer. It is for trusted server-side callers (e.g. the website's form
-// handler) that add subscribers through the admin API.
-func (a *App) ApplyReferral(c echo.Context) error {
-	user := auth.GetUser(c)
-
-	var req struct {
-		Email      string `json:"email"`
-		Lists      []int  `json:"list_ids"`
-		ReferredBy string `json:"referred_by"`
+// applyReferral is a best-effort wrapper around core.ApplyReferral: a failure to
+// record the referrer is logged but never fails the subscription itself. `since`
+// and `clockErr` come from a core.DBClock() call made before the subscription.
+func (a *App) applyReferral(subIDs, listIDs []int, listUUIDs []string, code string, since time.Time, clockErr error) {
+	if code == "" {
+		return
 	}
-	if err := c.Bind(&req); err != nil {
-		return err
+	if clockErr != nil {
+		a.log.Printf("error recording referral: %v", clockErr)
+		return
 	}
-
-	// Only lists the caller may manage.
-	listIDs := user.FilterListsByPerm(auth.PermTypeManage, req.Lists)
-	if len(req.Lists) > 0 && len(listIDs) == 0 {
-		return echo.NewHTTPError(http.StatusForbidden, a.i18n.Ts("globals.messages.permissionDenied", "name", "lists"))
+	if err := a.core.ApplyReferral(subIDs, listIDs, listUUIDs, code, since); err != nil {
+		a.log.Printf("error recording referral: %v", err)
 	}
-
-	n, err := a.core.ApplyReferralByEmail(req.Email, listIDs, req.ReferredBy)
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusOK, okResp{struct {
-		Updated int `json:"updated"`
-	}{n}})
 }
