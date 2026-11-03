@@ -641,6 +641,7 @@
     "subscribers.preconfirm": "Preconfirm subscriptions",
     "subscribers.preconfirmHelp": "Don't send opt-in e-mails and mark all list subscriptions as 'subscribed'.",
     "subscribers.queryPlaceholder": "E-mail or name",
+    "subscribers.referralCode": "Referral code",
     "subscribers.reSubscribe": "Re-subscribe",
     "subscribers.sendOptinConfirm": "Send opt-in confirmation",
     "subscribers.sentOptinConfirm": "Opt-in confirmation sent",

@@ -14,6 +14,9 @@
 				<button type="button" class="small" data-variant="secondary" title="{{ .L.T "globals.messages.clickToCopy" }}" aria-label="{{ .L.T "globals.fields.uuid" }}" @click="copyToClipboard(form.uuid)">
 					<strong>{{ .L.T "globals.fields.uuid" }}</strong> <span x-text="form.uuid"></span>
 				</button>
+				<button type="button" class="small" data-variant="secondary" title="{{ .L.T "globals.messages.clickToCopy" }}" aria-label="{{ .L.T "subscribers.referralCode" }}" data-testid="referral-code" @click="copyToClipboard(form.referral_code)">
+					<strong>{{ .L.T "subscribers.referralCode" }}</strong> <span x-text="form.referral_code"></span>
+				</button>
 			</div>
 		</div>
 	</div>
