@@ -13,7 +13,7 @@ import (
 func (m *Manager) NewCampaignMessage(c *models.Campaign, s models.Subscriber) (CampaignMessage, error) {
 	msg := CampaignMessage{
 		Campaign:   c,
-		Subscriber: s,
+		Subscriber: CampaignSubscriber{Subscriber: s, Lists: s.ListNames},
 
 		subject:  c.Subject,
 		from:     c.FromEmail,

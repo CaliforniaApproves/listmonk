@@ -223,7 +223,7 @@ func (a *App) PreviewCampaignArchive(c echo.Context) error {
 
 	// Render the campaign body.
 	out := res[0].Campaign
-	msg, err := a.manager.NewCampaignMessage(out, res[0].Subscriber)
+	msg, err := a.manager.NewCampaignMessage(out, res[0].Subscriber.Subscriber)
 	if err != nil {
 		a.log.Printf("error rendering campaign: %v", err)
 		return c.Render(http.StatusInternalServerError, tplMessage,
@@ -664,6 +664,15 @@ func (a *App) sendTestMessage(sub models.Subscriber, camp *models.Campaign) erro
 		a.log.Printf("error compiling template: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError,
 			a.i18n.Ts("templates.errorCompiling", "error", err.Error()))
+	}
+
+	// Make the subscriber's list names available to the template.
+	if sub.ID > 0 {
+		subs := models.Subscribers{sub}
+		if err := subs.LoadListNames(a.queries.GetSubscriberListNames); err != nil {
+			a.log.Printf("error loading subscriber lists: %v", err)
+		}
+		sub = subs[0]
 	}
 
 	// Create a sample campaign message.

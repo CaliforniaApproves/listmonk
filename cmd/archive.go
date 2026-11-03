@@ -163,7 +163,7 @@ func (a *App) CampaignArchivePage(c echo.Context) error {
 
 	// Render the campaign body.
 	camp := out[0].Campaign
-	msg, err := a.manager.NewCampaignMessage(camp, out[0].Subscriber)
+	msg, err := a.manager.NewCampaignMessage(camp, out[0].Subscriber.Subscriber)
 	if err != nil {
 		a.log.Printf("error rendering campaign: %v", err)
 		return c.Render(http.StatusInternalServerError, tplMessage,
@@ -222,7 +222,7 @@ func (a *App) getCampaignArchives(offset, limit int, renderBody bool) ([]campArc
 
 		// Render the full template body if requested.
 		if renderBody {
-			msg, err := a.manager.NewCampaignMessage(camp, m.Subscriber)
+			msg, err := a.manager.NewCampaignMessage(camp, m.Subscriber.Subscriber)
 			if err != nil {
 				return []campArchive{}, total, err
 			}
@@ -258,7 +258,7 @@ func (a *App) compileArchiveCampaigns(camps []models.Campaign) ([]manager.Campai
 
 		m := manager.CampaignMessage{
 			Campaign:   &camp,
-			Subscriber: sub,
+			Subscriber: manager.CampaignSubscriber{Subscriber: sub},
 		}
 
 		// Render the subject if it's a template.
