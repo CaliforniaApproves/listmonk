@@ -77,6 +77,13 @@ function component(sub = null) {
         attribs,
       });
 
+      // The leaderboard opt-out is stored separately from the profile.
+      if (!!this.form.hide_from_leaderboard !== !!sub.hide_from_leaderboard) {
+        await api('subscribers.save', `/subscribers/${this.form.id}/leaderboard-visibility`, 'PUT', {
+          hidden: !!this.form.hide_from_leaderboard,
+        });
+      }
+
       u.reload({ message: i18n.ts('globals.messages.updated', { name: data.email }) });
     },
 

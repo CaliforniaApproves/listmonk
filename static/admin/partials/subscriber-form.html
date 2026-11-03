@@ -8,6 +8,11 @@
 			<fieldset class="card">
 				<legend>{{ $root.L.T "globals.terms.profile" }}</legend>
 				{{ template "subscriber-fields" $root }}
+				{{- if not .IsNew }}
+					<label data-field>
+						<input type="checkbox" x-model="form.hide_from_leaderboard" data-testid="hide-from-leaderboard" /> {{ $root.L.T "subscribers.hideFromLeaderboard" }}
+					</label>
+				{{- end }}
 			</fieldset>
 
 			{{- if .IsNew }}
