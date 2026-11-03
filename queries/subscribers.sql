@@ -38,6 +38,14 @@ SELECT * FROM lists
     AND (CASE WHEN $6 != '' THEN lists.optin = $6::list_optin ELSE TRUE END)
     ORDER BY id;
 
+-- name: get-subscriber-list-names
+-- Names of the lists each of the given subscribers is subscribed to (any status
+-- except unsubscribed). Exposed to campaign templates as .Subscriber.Lists.
+SELECT sl.subscriber_id, ARRAY_AGG(l.name ORDER BY l.name) AS names
+    FROM subscriber_lists sl JOIN lists l ON l.id = sl.list_id
+    WHERE sl.subscriber_id = ANY($1::INT[]) AND sl.status != 'unsubscribed'
+    GROUP BY sl.subscriber_id;
+
 -- name: get-subscriber-lists-lazy
 -- Get lists associations of subscribers given a list of subscriber IDs.
 -- This query is used to lazy load given a list of subscriber IDs.

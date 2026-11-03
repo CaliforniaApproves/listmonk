@@ -42,6 +42,11 @@ type Subscriber struct {
 	// ReferralCode is the subscriber's short, unique share code (set by the DB).
 	ReferralCode string `db:"referral_code" json:"referral_code"`
 
+	// ListNames are the names of the lists the subscriber is subscribed to. It is
+	// loaded only for campaign messages (see LoadListNames) and is exposed to
+	// templates as .Subscriber.Lists.
+	ListNames []string `db:"-" json:"-"`
+
 	// HideFromLeaderboard: show as "Anonymous" on public leaderboards.
 	HideFromLeaderboard bool `db:"hide_from_leaderboard" json:"hide_from_leaderboard"`
 }
@@ -106,6 +111,28 @@ func (subs Subscribers) LoadLists(stmt *sqlx.Stmt) error {
 		if s.SubscriberID == subs[i].ID {
 			subs[i].Lists = s.Lists
 		}
+	}
+
+	return nil
+}
+
+// LoadListNames loads the names of the (non-unsubscribed) lists of all the
+// subscribers in one query and attaches them to their ListNames property.
+func (subs Subscribers) LoadListNames(stmt *sqlx.Stmt) error {
+	var rows []struct {
+		SubscriberID int            `db:"subscriber_id"`
+		Names        pq.StringArray `db:"names"`
+	}
+	if err := stmt.Select(&rows, pq.Array(subs.GetIDs())); err != nil {
+		return err
+	}
+
+	names := make(map[int][]string, len(rows))
+	for _, r := range rows {
+		names[r.SubscriberID] = r.Names
+	}
+	for i := range subs {
+		subs[i].ListNames = names[subs[i].ID]
 	}
 
 	return nil

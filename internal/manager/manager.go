@@ -114,11 +114,20 @@ type Manager struct {
 	tplFuncs template.FuncMap
 }
 
+// CampaignSubscriber is the subscriber as seen by campaign templates. It is a
+// models.Subscriber whose Lists is the list of names of the lists they are
+// subscribed to (instead of the JSON used by the API), so that templates can use
+// {{ if has "Pledge" .Subscriber.Lists }}.
+type CampaignSubscriber struct {
+	models.Subscriber
+	Lists []string
+}
+
 // CampaignMessage represents an instance of campaign message to be pushed out,
 // specific to a subscriber, via the campaign's messenger.
 type CampaignMessage struct {
 	Campaign   *models.Campaign
-	Subscriber models.Subscriber
+	Subscriber CampaignSubscriber
 
 	from     string
 	to       string
@@ -524,7 +533,7 @@ func (m *Manager) worker() {
 				ContentType: msg.Campaign.ContentType,
 				Body:        msg.body,
 				AltBody:     msg.altBody,
-				Subscriber:  msg.Subscriber,
+				Subscriber:  msg.Subscriber.Subscriber,
 				Campaign:    msg.Campaign,
 				Attachments: msg.Campaign.Attachments,
 			}

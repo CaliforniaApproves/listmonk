@@ -62,7 +62,15 @@ func (s *store) NextSubscribers(campID, lastFetchedID, limit int) ([]models.Subs
 
 	var out []models.Subscriber
 	err := s.queries.NextCampaignSubscribers.Select(&out, camps[0].CampaignID, camps[0].CampaignType, lastFetchedID, camps[0].MaxSubscriberID, pq.Array(listIDs), limit)
-	return out, err
+	if err != nil {
+		return out, err
+	}
+
+	// Make the subscribers' list names available to the templates.
+	if err := models.Subscribers(out).LoadListNames(s.queries.GetSubscriberListNames); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // GetCampaign fetches a campaign from the database.
