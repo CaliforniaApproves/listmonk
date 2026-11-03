@@ -29,6 +29,11 @@ function component(list = null) {
   return {
     form: list ? makeFormFromList(list) : makeForm(),
 
+    urls,
+
+    // Referral leaderboard dialog state.
+    leaderboard: { name: '', rows: [] },
+
     // ===============
     // Event handlers.
     async onSubmitNew() {
@@ -65,6 +70,12 @@ function component(list = null) {
           name: i18n.tc('globals.terms.list', count),
         })
       });
+    },
+
+    async onOpenLeaderboard(id, name) {
+      this.leaderboard = { name, rows: [] };
+      this.$refs.leaderboardDialog.showModal();
+      this.leaderboard.rows = await api('lists.leaderboard', `/lists/${id}/leaderboard`, 'GET');
     },
 
     async onCreateOptinCampaign(id, name) {

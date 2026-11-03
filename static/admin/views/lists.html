@@ -152,6 +152,9 @@
 											{{- if $d.CanManageList .ID }}
 												<a href="{{ URI "/admin/lists" }}/{{ .ID }}/edit" role="menuitem" class="button ghost" data-testid="btn-edit">{{ Icon "edit-2" }} {{ $.L.T "globals.buttons.edit" }}</a>
 											{{- end }}
+											{{- if $d.Can "subscribers:get" "subscribers:get_all" }}
+												<button type="button" role="menuitem" class="ghost" data-testid="btn-leaderboard" @click.prevent="onOpenLeaderboard({{ .ID }}, {{ ToJSON .Name }})">{{ Icon "star" }} {{ $.L.T "lists.leaderboard" }}</button>
+											{{- end }}
 											{{- if $d.Can "subscribers:import" }}
 												<a href="{{ URI "/admin/import" }}?list_id={{ .ID }}" role="menuitem" class="button ghost" data-testid="btn-import">{{ Icon "upload" }} {{ $.L.T "globals.terms.import" }}</a>
 											{{- end }}
@@ -189,6 +192,36 @@
 			{{- end }}
 		</div>
 	</div>
+
+	<dialog x-ref="leaderboardDialog">
+		<div class="dialog-card content">
+			<header class="dialog-head"><h4 class="dialog-title">{{ .L.T "lists.leaderboard" }}: <span x-text="leaderboard.name"></span></h4></header>
+			<section class="dialog-body" :aria-busy="isLoading('lists.leaderboard')">
+				<table data-testid="leaderboard">
+					<thead><tr>
+						<th>#</th>
+						<th>{{ .L.T "globals.fields.name" }}</th>
+						<th>{{ .L.T "subscribers.referralCode" }}</th>
+						<th class="align-right">{{ .L.T "lists.referrals" }}</th>
+					</tr></thead>
+					<tbody>
+						<template x-for="r in leaderboard.rows" :key="r.subscriber_id">
+							<tr>
+								<td x-text="r.rank"></td>
+								<td><a :href="`${urls.admin}/subscribers/${r.subscriber_id}`" x-text="r.name || r.email" :title="r.email"></a></td>
+								<td><code x-text="r.referral_code"></code></td>
+								<td class="align-right" x-text="r.count"></td>
+							</tr>
+						</template>
+						<tr x-show="leaderboard.rows.length === 0"><td colspan="4" class="text-light">{{ .L.T "lists.noReferrals" }}</td></tr>
+					</tbody>
+				</table>
+			</section>
+			<footer class="dialog-foot hstack gap-3 justify-end">
+				<button type="button" class="outline" @click="$refs.leaderboardDialog.close()">{{ .L.T "globals.buttons.close" }}</button>
+			</footer>
+		</div>
+	</dialog>
 
 </section>
 
