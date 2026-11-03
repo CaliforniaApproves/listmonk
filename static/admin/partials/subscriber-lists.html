@@ -8,6 +8,7 @@
 				<th>{{ $root.L.T "globals.terms.list" }}</th>
 				<th>{{ $root.L.T "lists.optin" }}</th>
 				<th>{{ $root.L.T "globals.fields.status" }}</th>
+				<th>{{ $root.L.T "subscribers.referredBy" }}</th>
 				<th>{{ $root.L.T "globals.fields.createdAt" }}</th>
 				<th>{{ $root.L.T "globals.fields.updatedAt" }}</th>
 				{{- if $canSave }}<th></th>{{ end }}
@@ -38,6 +39,13 @@
 								{{ Badge (list (Dot) ($root.L.T (printf "globals.terms.%s" .SubscriptionStatus))) (printf "enum status-%s" .SubscriptionStatus) }}
 							{{- end -}}
 						</td>
+						<td data-label="{{ $root.L.T "subscribers.referredBy" }}" data-testid="referred-by">
+							{{- if .ReferredBy.Valid }}
+								<a href="{{ URI "/admin/subscribers" }}/{{ .ReferredBy.Int }}" class="unstyled" title="{{ .ReferredByEmail.String }} ({{ .ReferredByCode.String }})">{{ or .ReferredByName.String .ReferredByEmail.String }}</a>
+							{{- else }}
+								<span class="text-light">&ndash;</span>
+							{{- end }}
+						</td>
 						<td data-label="{{ $root.L.T "globals.fields.createdAt" }}">{{ NiceDate .SubscriptionCreatedAt }}</td>
 						<td data-label="{{ $root.L.T "globals.fields.updatedAt" }}">{{ NiceDate .SubscriptionUpdatedAt }}</td>
 						{{- if $canSave }}
@@ -60,7 +68,7 @@
 						{{- end }}
 					</tr>
 				{{- else }}
-					{{ template "empty-state" 6 }}
+					{{ template "empty-state" 7 }}
 				{{- end }}
 			</tbody>
 		</table>

@@ -67,6 +67,12 @@ type SubscriberListView struct {
 	SubscriptionCreatedAt null.Time `json:"subscription_created_at"`
 	SubscriptionUpdatedAt null.Time `json:"subscription_updated_at"`
 	Restricted            bool      `json:"restricted"`
+
+	// The referrer of the subscription, if any.
+	ReferredBy      null.Int    `json:"subscription_referred_by"`
+	ReferredByName  null.String `json:"subscription_referred_by_name"`
+	ReferredByEmail null.String `json:"subscription_referred_by_email"`
+	ReferredByCode  null.String `json:"subscription_referred_by_code"`
 }
 
 // ParsedLists unmarshals the subscriber's raw Lists JSON into a slice for
